@@ -42,13 +42,18 @@ jobs:
             value=$(jq -r --arg k "$key" '.[$k]' vars.json)
             TEMPLATE_CONTENT=${TEMPLATE_CONTENT//"#{$key}"/"$value"}
           done
-  
+          
+          # 替换发送时间（使用中国时区）
+          export TZ='Asia/Shanghai'
+          SEND_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+          TEMPLATE_CONTENT=${TEMPLATE_CONTENT//"#{sendTime}"/"$SEND_TIME"}    
+
           # 用 heredoc 写入多行输出（非常重要）
           {
             echo "body_html<<EOF"
             echo "$TEMPLATE_CONTENT"
             echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          } >> mail_body.html
 
       # Step4: Send email
       - name: Send Email
@@ -62,4 +67,4 @@ jobs:
           to: ${{ github.event.client_payload.to }}
           from: ${{ secrets.MAIL_USERNAME }}
           content_type: text/html
-          body: ${{ steps.template.outputs.body_html }}
+          body_path: mail_body.html
