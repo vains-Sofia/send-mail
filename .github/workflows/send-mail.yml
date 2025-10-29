@@ -1,0 +1,33 @@
+name: External Mail Sender
+
+on:
+  repository_dispatch:
+    types: [send_mail]  # 接收外部请求触发
+
+jobs:
+  send_mail_job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract SMTP host from username
+        id: smtp
+        run: |
+          user="${{ secrets.MAIL_USERNAME }}"
+          domain="${user#*@}"  # 截取@后的部分
+          echo "host=smtp.$domain" >> $GITHUB_OUTPUT
+    
+      - name: Send Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ steps.smtp.outputs.host }}
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "📧 外部触发邮件通知"
+          to: ${{ github.event.client_payload.to }}
+          from: ${{ secrets.MAIL_USERNAME }}
+          body: |
+            收件人: ${{ github.event.client_payload.to }}
+            消息内容: ${{ github.event.client_payload.message }}
+            仓库: ${{ github.repository }}
+            触发时间: ${{ github.event.client_payload.timestamp }}
