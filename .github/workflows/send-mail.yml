@@ -9,13 +9,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout 仓库
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      # Extract SMTP host
       - name: Extract SMTP host from username
         id: smtp
         run: |
           user="${{ secrets.MAIL_USERNAME }}"
           domain="${user#*@}"  # 截取@后的部分
           echo "host=smtp.$domain" >> $GITHUB_OUTPUT
-    
+      
+      # Read template based on client_payload.template
+      - name: Read HTML template
+        id: template
+        run: |
+          TEMPLATE_FILE="mail-templates/${{ github.event.client_payload.template }}"
+          if [[ ! -f "$TEMPLATE_FILE" ]]; then
+            echo "Template not found: $TEMPLATE_FILE"
+            exit 1
+          fi
+          TEMPLATE_CONTENT=$(cat "$TEMPLATE_FILE")
+
+          # 循环 client_payload.variables 中的 key/value 替换占位符
+          for key in $(echo "${{ toJson(github.event.client_payload.variables) }}" | jq -r 'keys[]'); do
+            value=$(echo "${{ toJson(github.event.client_payload.variables) }}" | jq -r --arg k "$key" '.[$k]')
+            TEMPLATE_CONTENT=${TEMPLATE_CONTENT//"#{$key}"/"$value"}
+          done
+
+          echo "body_html=$TEMPLATE_CONTENT" >> $GITHUB_OUTPUT
+
+      # Step4: Send email
       - name: Send Email
         uses: dawidd6/action-send-mail@v3
         with:
@@ -26,8 +51,4 @@ jobs:
           subject: "📧 外部触发邮件通知"
           to: ${{ github.event.client_payload.to }}
           from: ${{ secrets.MAIL_USERNAME }}
-          body: |
-            收件人: ${{ github.event.client_payload.to }}
-            消息内容: ${{ github.event.client_payload.message }}
-            仓库: ${{ github.repository }}
-            触发时间: ${{ github.event.client_payload.timestamp }}
+          body: template
