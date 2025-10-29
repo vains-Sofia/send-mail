@@ -57,7 +57,7 @@ jobs:
 
       # Step4: Send email
       - name: Send Email
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v6
         with:
           server_address: ${{ steps.smtp.outputs.host }}
           server_port: 465
@@ -67,4 +67,4 @@ jobs:
           to: ${{ github.event.client_payload.to }}
           from: ${{ secrets.MAIL_USERNAME }}
           content_type: text/html
-          body_path: mail_body.html
+          html_body: file://mail_body.html
