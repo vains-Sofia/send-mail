@@ -30,15 +30,25 @@ jobs:
             echo "Template not found: $TEMPLATE_FILE"
             exit 1
           fi
+  
+          # 读取 HTML 模板内容
           TEMPLATE_CONTENT=$(cat "$TEMPLATE_FILE")
-
-          # 循环 client_payload.variables 中的 key/value 替换占位符
-          for key in $(echo "${{ toJson(github.event.client_payload.variables) }}" | jq -r 'keys[]'); do
-            value=$(echo "${{ toJson(github.event.client_payload.variables) }}" | jq -r --arg k "$key" '.[$k]')
+  
+          # 将 variables JSON 存入文件以避免转义问题
+          echo '${{ toJson(github.event.client_payload.variables) }}' > vars.json
+  
+          # 遍历 JSON 中的每个 key/value
+          for key in $(jq -r 'keys[]' vars.json); do
+            value=$(jq -r --arg k "$key" '.[$k]' vars.json)
             TEMPLATE_CONTENT=${TEMPLATE_CONTENT//"#{$key}"/"$value"}
           done
-
-          echo "body_html=$TEMPLATE_CONTENT" >> $GITHUB_OUTPUT
+  
+          # 用 heredoc 写入多行输出（非常重要）
+          {
+            echo "body_html<<EOF"
+            echo "$TEMPLATE_CONTENT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       # Step4: Send email
       - name: Send Email
