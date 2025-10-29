@@ -58,7 +58,8 @@ jobs:
           server_port: 465
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "📧 外部触发邮件通知"
+          subject: ${{ github.event.client_payload.subject }}
           to: ${{ github.event.client_payload.to }}
           from: ${{ secrets.MAIL_USERNAME }}
-          body: template
+          content_type: text/html
+          body: ${{ steps.template.outputs.body_html }}
